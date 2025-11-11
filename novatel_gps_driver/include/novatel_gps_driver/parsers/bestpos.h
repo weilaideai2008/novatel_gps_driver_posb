@@ -49,6 +49,7 @@ namespace novatel_gps_driver
     MessageType ParseAscii(const NovatelSentence& sentence) noexcept(false) override;
 
     static constexpr uint16_t MESSAGE_ID = 42;
+    static constexpr uint16_t MESSAGE_ID2 = 1429;
     static constexpr size_t BINARY_LENGTH = 72;
     static constexpr size_t ASCII_LENGTH = 21;
     static const std::string MESSAGE_NAME;

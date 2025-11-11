@@ -1034,6 +1034,7 @@ namespace novatel_gps_driver
     switch (msg.header_.message_id_)
     {
       case BestposParser::MESSAGE_ID:
+      case BestposParser::MESSAGE_ID2:
       {
         auto position = bestpos_parser_.ParseBinary(msg);
         position->header.stamp = stamp;
