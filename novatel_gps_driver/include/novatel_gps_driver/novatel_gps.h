@@ -72,6 +72,9 @@
 #include <novatel_gps_driver/parsers/gpgsv.h>
 #include <novatel_gps_driver/parsers/gphdt.h>
 #include <novatel_gps_driver/parsers/gprmc.h>
+#include <novatel_gps_driver/parsers/gtimu.h>
+#include <novatel_gps_driver/parsers/gpfpd.h>
+#include <novatel_gps_driver/parsers/gphpd.h>
 #include <novatel_gps_driver/parsers/heading2.h>
 #include <novatel_gps_driver/parsers/dual_antenna_heading.h>
 #include <novatel_gps_driver/parsers/inscov.h>
@@ -176,6 +179,24 @@ namespace novatel_gps_driver
        * @param[out] gprmc_messages New GPRMC messages.
        */
       void GetGprmcMessages(std::vector<novatel_gps_driver::GprmcParser::MessageType>& gprmc_messages);
+      /**
+       * @brief Provides any GTIMU messages that have been received since the
+       * last time this was called.
+       * @param[out] gtimu_messages New GTIMU messages.
+       */
+      void GetGtimuMessages(std::vector<novatel_gps_driver::GtimuParser::MessageType>& gtimu_messages);
+      /**
+       * @brief Provides any GPFPD messages that have been received since the
+       * last time this was called.
+       * @param[out] gpfd_messages New GPFPD messages.
+       */
+      void GetGpfpdMessages(std::vector<novatel_gps_driver::GpfpdParser::MessageType>& gpfpd_messages);
+      /**
+       * @brief Provides any GPHPD messages that have been received since the
+       * last time this was called.
+       * @param[out] gphpd_messages New GPHPD messages.
+       */
+      void GetGphpdMessages(std::vector<novatel_gps_driver::GphpdParser::MessageType>& gphpd_messages);
       /**
        * @brief Provides any HEADING2 messages that have been received since the
        * last time this was called.
@@ -455,6 +476,18 @@ namespace novatel_gps_driver
        */
       ReadResult ReadData();
 
+      /**
+       * @brief Processes any messages in gtimu in order to
+       * generate Imu messages from them.
+       */
+      void GenerateImuMessagesFromNewton();
+
+      /**
+       * @brief Processes any messages in gphpd in order to
+       * generate gnss/ins orientation messages from them.
+       */
+      void GeneratieGnssInsOrientation();
+
       static constexpr uint16_t DEFAULT_TCP_PORT = 3001;
       static constexpr uint16_t DEFAULT_UDP_PORT = 3002;
       static constexpr size_t MAX_BUFFER_SIZE = 100;
@@ -518,6 +551,10 @@ namespace novatel_gps_driver
       GpgsvParser gpgsv_parser_;
       GphdtParser gphdt_parser_;
       GprmcParser gprmc_parser_;
+      GtimuParser gtimu_parser_;
+      GpfpdParser gpfpd_parser_;
+      GphpdParser gphpd_parser_;
+
       InscovParser inscov_parser_;
       InspvaParser inspva_parser_;
       InspvasParser inspvas_parser_;
@@ -538,6 +575,9 @@ namespace novatel_gps_driver
       boost::circular_buffer<novatel_gps_driver::GpgsvParser::MessageType> gpgsv_msgs_;
       boost::circular_buffer<novatel_gps_driver::GphdtParser::MessageType> gphdt_msgs_;
       boost::circular_buffer<novatel_gps_driver::GprmcParser::MessageType> gprmc_msgs_;
+      boost::circular_buffer<novatel_gps_driver::GtimuParser::MessageType> gtimu_msgs_;
+      boost::circular_buffer<novatel_gps_driver::GpfpdParser::MessageType> gpfpd_msgs_;
+      boost::circular_buffer<novatel_gps_driver::GphpdParser::MessageType> gphpd_msgs_;
       boost::circular_buffer<sensor_msgs::msg::Imu::SharedPtr> imu_msgs_;
       boost::circular_buffer<novatel_gps_driver::InscovParser::MessageType> inscov_msgs_;
       boost::circular_buffer<novatel_gps_driver::InspvaParser::MessageType> inspva_msgs_;

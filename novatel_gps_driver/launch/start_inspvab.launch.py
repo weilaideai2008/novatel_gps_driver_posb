@@ -18,16 +18,20 @@ def generate_launch_description():
                 parameters=[{
                     'connection_type': 'serial',
                     'device': '/dev/ttyACM0',
+                    'serial_baud': 921600,
                     'verbose': True,
                     'publish_novatel_positions': True,
                     'publish_novatel_velocity': False,
                     'publish_novatel_psrdop2': False,
                     'frame_id': '/gps',
                     'loop': True, 
-                    'publish_imu_messages': True, 
-                    'publish_nmea_messages': False, 
+                    'publish_nmea_messages': True,
+                    'publish_gtimu': True,
+                    'publish_gpfpd': True,
+                    'publish_gphpd': True,
+                    'frame_id': "gnss_ins",
                     'imu_rate': 100.0, # Hz
-                    'log_level': 'debug', # 日誌等級爲DEBUG
+                    'log_level': 'debug', # 日誌等級爲DEBUG debug, info, warn, error, fatal
                 }]
             )
         ],

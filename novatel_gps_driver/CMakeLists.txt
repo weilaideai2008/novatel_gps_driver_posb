@@ -50,6 +50,9 @@ add_library(${PROJECT_NAME}
   src/parsers/gpgsv.cpp
   src/parsers/gphdt.cpp
   src/parsers/gprmc.cpp
+  src/parsers/gtimu.cpp
+  src/parsers/gpfpd.cpp
+  src/parsers/gphpd.cpp
   src/parsers/header.cpp
   src/parsers/heading2.cpp
   src/parsers/inscov.cpp

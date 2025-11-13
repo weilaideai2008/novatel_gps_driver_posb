@@ -142,6 +142,12 @@ Nodelets
             - Default: `false`
         - `publish_gphdt`: `true` to publish novatel_gps_msgs/Gphdt messages.
             - Default: `false`
+        - `publish_gtimu`: `true` to publish novatel_gps_msgs/Gtimu for Newton M2 messages.this will cause publish sensor_msgs/Imu messages. if no set the imu_frame_id will cause use the same value as frame_id
+            - Default: `false`
+        - `publish_gpfpd`: `true` to publish novatel_gps_msgs/Gpfpd for Newton M2 messages.this will cause publish imu_Orientation messages. use the same value as frame_id
+            - Default: `false`
+        - `publish_gphpd`: `true` to publish novatel_gps_msgs/Gphpd for Newton M2 messages.this will cause publish geometry_msgs/PoseStamped messages. use the same value as frame_id
+            - Default: `false`
         - `publish_imu_messages`: `true` to publish novatel_gps_msgs/NovatelCorrectedImuData, novatel_gps_msgs/Inspva,
         novatel_gps_msgs/Inspvax, novatel_gps_msgs/Insstdev, and sensor_msgs/Imu messages.
             - Default: `false`

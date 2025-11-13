@@ -71,6 +71,9 @@ namespace novatel_gps_driver
       gpgsv_msgs_(MAX_BUFFER_SIZE),
       gphdt_msgs_(MAX_BUFFER_SIZE),
       gprmc_msgs_(MAX_BUFFER_SIZE),
+      gtimu_msgs_(MAX_BUFFER_SIZE),
+      gpfpd_msgs_(MAX_BUFFER_SIZE),
+      gphpd_msgs_(MAX_BUFFER_SIZE),
       imu_msgs_(MAX_BUFFER_SIZE),
       inscov_msgs_(MAX_BUFFER_SIZE),
       inspva_msgs_(MAX_BUFFER_SIZE),
@@ -490,6 +493,21 @@ namespace novatel_gps_driver
   void NovatelGps::GetGphdtMessages(std::vector<novatel_gps_driver::GphdtParser::MessageType>& gphdt_messages)
   {
     DrainQueue(gphdt_msgs_, gphdt_messages);
+  }
+
+  void NovatelGps::GetGtimuMessages(std::vector<novatel_gps_driver::GtimuParser::MessageType>& gtimu_messages)
+  {
+    DrainQueue(gtimu_msgs_, gtimu_messages);
+  }
+
+  void NovatelGps::GetGpfpdMessages(std::vector<novatel_gps_driver::GpfpdParser::MessageType>& gpfpd_messages)
+  {
+    DrainQueue(gpfpd_msgs_, gpfpd_messages);
+  }
+
+  void NovatelGps::GetGphpdMessages(std::vector<novatel_gps_driver::GphpdParser::MessageType>& gphpd_messages)
+  {
+    DrainQueue(gphpd_msgs_, gphpd_messages);
   }
 
   void NovatelGps::GetGprmcMessages(std::vector<novatel_gps_driver::GprmcParser::MessageType>& gprmc_messages)
@@ -1012,6 +1030,62 @@ namespace novatel_gps_driver
     RCLCPP_DEBUG(node_.get_logger(), "Created %lu new sensor_msgs/Imu messages.", new_size);
   }
 
+  void NovatelGps::GenerateImuMessagesFromNewton()
+  {
+    size_t previous_size = imu_msgs_.size();
+    // Only do anything if we have gtimu messages.
+    if(!gtimu_msgs_.empty() && !gpfpd_msgs_.empty() )
+    {
+      const auto& gtimu = gtimu_msgs_.back();
+      const auto& gpfpd = gpfpd_msgs_.back();
+      // Now we can combine them together to make an Imu message.
+      auto imu = std::make_shared<sensor_msgs::msg::Imu>();
+      imu->header.stamp = gtimu->header.stamp;
+      tf2::Quaternion q;
+      q.setRPY(gpfpd->roll * DEGREES_TO_RADIANS,
+               -(gpfpd->pitch) * DEGREES_TO_RADIANS,
+               -(gpfpd->heading) * DEGREES_TO_RADIANS);
+      imu->orientation = tf2::toMsg(q);
+      imu->orientation_covariance[0] =
+      imu->orientation_covariance[4] =
+      imu->orientation_covariance[8] = 1e-3;
+
+      imu->angular_velocity.x = gtimu->gx;
+      imu->angular_velocity.y = gtimu->gy;
+      imu->angular_velocity.z = gtimu->gz;
+      imu->angular_velocity_covariance[0] =
+      imu->angular_velocity_covariance[4] =
+      imu->angular_velocity_covariance[8] = 1e-3;
+
+      imu->linear_acceleration.x = gtimu->ax;
+      imu->linear_acceleration.y = gtimu->ay;
+      imu->linear_acceleration.z = gtimu->az;
+      imu->linear_acceleration_covariance[0] =
+      imu->linear_acceleration_covariance[4] =
+      imu->linear_acceleration_covariance[8] = 1e-3;
+
+      imu_msgs_.push_back(imu);
+    }
+  }
+
+  void NovatelGps::GeneratieGnssInsOrientation()
+  {
+    if(!gphpd_msgs_.empty() )
+    {
+      // auto posestamp = std::make_shared<geometry_msgs::msg::PoseStamped>();
+      // const auto& gphpd = gphpd_msgs_.back();
+      // posestamp->header.stamp = gphpd->header.stamp;
+      // tf2::Quaternion q;
+      // q.setRPY(gphpd->roll * DEGREES_TO_RADIANS,
+      //           -(gphpd->pitch) * DEGREES_TO_RADIANS,
+      //           -(gphpd->heading) * DEGREES_TO_RADIANS);
+      // posestamp->orientation = tf2::toMsg(q);
+      // posestamp->position.x = gphpd->ve;
+      // posestamp->position.y = gphpd->vn;
+      // posestamp->position.z = gphpd->vu;
+    }
+  }
+
   void NovatelGps::SetImuRate(double imu_rate, bool imu_rate_forced)
   {
     RCLCPP_INFO(node_.get_logger(), "IMU sample rate: %f", imu_rate);
@@ -1255,6 +1329,23 @@ namespace novatel_gps_driver
     {
       auto gphdt = gphdt_parser_.ParseAscii(sentence);
       gphdt_msgs_.push_back(std::move(gphdt));
+    }
+    else if (sentence.id == GtimuParser::MESSAGE_NAME)
+    {
+      auto gtimu = gtimu_parser_.ParseAscii(sentence);
+      gtimu_msgs_.push_back(std::move(gtimu));
+      GenerateImuMessagesFromNewton();
+    }
+    else if (sentence.id == GpfpdParser::MESSAGE_NAME)
+    {
+      auto gpfpd = gpfpd_parser_.ParseAscii(sentence);
+      gpfpd_msgs_.push_back(std::move(gpfpd));
+      GenerateImuMessagesFromNewton();
+    }
+    else if (sentence.id == GphpdParser::MESSAGE_NAME)
+    {
+      auto gphpd = gphpd_parser_.ParseAscii(sentence);
+      gphpd_msgs_.push_back(std::move(gphpd));
     }
     else
     {

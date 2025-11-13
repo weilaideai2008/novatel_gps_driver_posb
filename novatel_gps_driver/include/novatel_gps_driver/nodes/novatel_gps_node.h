@@ -199,6 +199,9 @@ namespace novatel_gps_driver
     bool publish_gpgsa_;
     bool publish_gpgsv_;
     bool publish_gphdt_;
+    bool publish_gtimu_;
+    bool publish_gpfpd_;
+    bool publish_gphpd_;
     /// The rate at which IMU measurements will be published, in Hz
     double imu_rate_;
     /// How frequently the device samples the IMU, in Hz
@@ -246,6 +249,9 @@ namespace novatel_gps_driver
     rclcpp::Publisher<novatel_gps_msgs::msg::Gpgsa>::SharedPtr gpgsa_pub_;
     rclcpp::Publisher<novatel_gps_msgs::msg::Gphdt>::SharedPtr gphdt_pub_;
     rclcpp::Publisher<novatel_gps_msgs::msg::Gprmc>::SharedPtr gprmc_pub_;
+    rclcpp::Publisher<novatel_gps_msgs::msg::Gtimu>::SharedPtr gtimu_pub_;
+    rclcpp::Publisher<novatel_gps_msgs::msg::Gpfpd>::SharedPtr gpfpd_pub_;
+    rclcpp::Publisher<novatel_gps_msgs::msg::Gphpd>::SharedPtr gphpd_pub_;
     rclcpp::Publisher<novatel_gps_msgs::msg::Range>::SharedPtr range_pub_;
     rclcpp::Publisher<novatel_gps_msgs::msg::Time>::SharedPtr time_pub_;
     rclcpp::Publisher<sensor_msgs::msg::TimeReference>::SharedPtr time_ref_pub_;

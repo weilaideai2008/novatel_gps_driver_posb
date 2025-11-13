@@ -17,6 +17,9 @@ set(MSG_FILES
   msg/Gpgsv.msg
   msg/Gphdt.msg
   msg/Gprmc.msg
+  msg/Gtimu.msg
+  msg/Gpfpd.msg
+  msg/Gphpd.msg
   msg/Inscov.msg
   msg/Inspva.msg
   msg/Inspvax.msg

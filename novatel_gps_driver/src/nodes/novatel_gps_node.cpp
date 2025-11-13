@@ -52,6 +52,9 @@ namespace novatel_gps_driver
       publish_gpgsa_(false),
       publish_gpgsv_(false),
       publish_gphdt_(false),
+      publish_gtimu_(false),
+      publish_gpfpd_(false),
+      publish_gphpd_(false),
       imu_rate_(100.0),
       imu_sample_rate_(-1),
       span_frame_to_ros_frame_(false),
@@ -109,6 +112,9 @@ namespace novatel_gps_driver
     publish_gpgsa_ = this->declare_parameter("publish_gpgsa", publish_gpgsa_);
     publish_gpgsv_ = this->declare_parameter("publish_gpgsv", publish_gpgsv_);
     publish_gphdt_ = this->declare_parameter("publish_gphdt", publish_gphdt_);
+    publish_gtimu_ = this->declare_parameter("publish_gtimu", publish_gtimu_);
+    publish_gpfpd_ = this->declare_parameter("publish_gpfpd", publish_gpfpd_);
+    publish_gphpd_ = this->declare_parameter("publish_gphpd", publish_gphpd_);
     publish_imu_messages_ = this->declare_parameter("publish_imu_messages", publish_imu_messages_);
     publish_invalid_gpsfix_ = this->declare_parameter("publish_invalid_gpsfix", false);
     publish_novatel_positions_ = this->declare_parameter("publish_novatel_positions", publish_novatel_positions_);
@@ -184,6 +190,13 @@ namespace novatel_gps_driver
       inspvax_pub_ = swri::advertise<novatel_gps_msgs::msg::Inspvax>(*this, "inspvax", 100);
       inscov_pub_ = swri::advertise<novatel_gps_msgs::msg::Inscov>(*this, "inscov", 100);
     }
+    else
+    {
+      if( publish_gtimu_ && publish_gpfpd_)
+      {
+        imu_pub_ = swri::advertise<sensor_msgs::msg::Imu>(*this, "imu", 100);
+      }
+    }
 
     if (publish_gpgsv_)
     {
@@ -193,6 +206,21 @@ namespace novatel_gps_driver
     if (publish_gphdt_)
     {
       gphdt_pub_ = swri::advertise<novatel_gps_msgs::msg::Gphdt>(*this, "gphdt", 100);
+    }
+
+    if (publish_gtimu_)
+    {
+      gtimu_pub_ = swri::advertise<novatel_gps_msgs::msg::Gtimu>(*this, "gtimu", 100);
+    }
+
+    if (publish_gpfpd_)
+    {
+      gpfpd_pub_ = swri::advertise<novatel_gps_msgs::msg::Gpfpd>(*this, "gpfpd", 100);
+    }
+
+    if(publish_gphpd_)
+    {
+      gphpd_pub_ = swri::advertise<novatel_gps_msgs::msg::Gphpd>(*this, "gphpd", 100);
     }
 
     if (publish_novatel_positions_)
@@ -655,6 +683,53 @@ namespace novatel_gps_driver
         msg->header.stamp = this->get_clock()->now();
         msg->header.frame_id = frame_id_;
         gphdt_pub_->publish(std::move(msg));
+      }
+    }
+
+    if(publish_gtimu_)
+    {
+      // std::vector<novatel_gps_driver::GtimuParser::MessageType> gtimu_msgs;
+      // gps_.GetGtimuMessages(gtimu_msgs);
+      // for (auto& msg : gtimu_msgs)
+      // {
+      //   msg->header.stamp = this->get_clock()->now();
+      //   msg->header.frame_id = frame_id_;
+      //   gtimu_pub_->publish(std::move(msg));
+      // }
+    }
+
+    if(publish_gpfpd_)
+    {
+      std::vector<novatel_gps_driver::GpfpdParser::MessageType> gpfpd_msgs;
+      gps_.GetGpfpdMessages(gpfpd_msgs);
+      for (auto& msg : gpfpd_msgs)
+      {
+        msg->header.stamp = this->get_clock()->now();
+        msg->header.frame_id = frame_id_;
+        gpfpd_pub_->publish(std::move(msg));
+      }
+    }
+    if( publish_gpfpd_ && publish_gtimu_)
+    {
+      std::vector<sensor_msgs::msg::Imu::SharedPtr> imu_msgs;
+      gps_.GetImuMessages(imu_msgs);
+      for (const auto& msg : imu_msgs)
+      {
+        msg->header.stamp = rclcpp::Time(msg->header.stamp, this->get_clock()->get_clock_type()) + sync_offset;
+        msg->header.frame_id = imu_frame_id_;
+        imu_pub_->publish(*msg);
+      }
+    }
+
+    if(publish_gphpd_)
+    {
+      std::vector<novatel_gps_driver::GphpdParser::MessageType> gphpd_msgs;
+      gps_.GetGphpdMessages(gphpd_msgs);
+      for (auto& msg : gphpd_msgs)
+      {
+        msg->header.stamp = this->get_clock()->now();
+        msg->header.frame_id = frame_id_;
+        gphpd_pub_->publish(std::move(msg));
       }
     }
 
