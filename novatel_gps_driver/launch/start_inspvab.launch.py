@@ -23,13 +23,15 @@ def generate_launch_description():
                     'publish_novatel_positions': True,
                     'publish_novatel_velocity': False,
                     'publish_novatel_psrdop2': False,
-                    'frame_id': '/gps',
+                    'frame_id': 'map',
+                    'imu_frame_id': 'tamagawa/imu_link',
                     'loop': True, 
                     'publish_nmea_messages': True,
                     'publish_gtimu': True,
-                    'publish_gpfpd': True,
-                    'publish_gphpd': True,
-                    'frame_id': "gnss_ins",
+                    'publish_gpfpd': False,
+                    'publish_gphpd': False,
+                    'publish_gpsOrientation': True,
+                    'expected_rate': 1.0,
                     'imu_rate': 100.0, # Hz
                     'log_level': 'debug', # 日誌等級爲DEBUG debug, info, warn, error, fatal
                 }]

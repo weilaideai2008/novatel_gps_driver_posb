@@ -6,11 +6,11 @@ string message_id
 
 int32   gpsweek
 float64 gpstime
-float64 gx
-float64 gy
-float64 gz
-float64 ax
-float64 ay
-float64 az
+float64 gx  # degree/s
+float64 gy  # degree/s
+float64 gz  # degree/s
+float64 ax  # g
+float64 ay  # g
+float64 az  # g
 float32 tpr 
 

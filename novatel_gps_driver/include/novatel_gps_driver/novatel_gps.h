@@ -88,6 +88,8 @@
 #include <novatel_gps_driver/parsers/trackstat.h>
 #include <novatel_gps_driver/parsers/rxstatus.h>
 
+#include <autoware_sensing_msgs/msg/gnss_ins_orientation_stamped.hpp>
+
 namespace novatel_gps_driver
 {
   /// Define NovatelMessageOpts as a map from message name to log period (seconds)
@@ -197,6 +199,12 @@ namespace novatel_gps_driver
        * @param[out] gphpd_messages New GPHPD messages.
        */
       void GetGphpdMessages(std::vector<novatel_gps_driver::GphpdParser::MessageType>& gphpd_messages);
+      /**
+       * @brief Provides any inpsva messages that have been received since the
+       * last time this was called.
+       * @param[out] gphpd_messages New gnss_ins_orientation_stamped messages.
+       */
+      void GetGnssOrientationMessages(std::vector<autoware_sensing_msgs::msg::GnssInsOrientationStamped>& gps_orientation_messages);
       /**
        * @brief Provides any HEADING2 messages that have been received since the
        * last time this was called.
@@ -488,6 +496,12 @@ namespace novatel_gps_driver
        */
       void GeneratieGnssInsOrientation();
 
+      /**
+       * @brief Processes any messages in inpva in order to
+       * generate gnss/ins orientation messages from them.
+       */
+      void GeneratieGnssInsOrientation_Inpsva(const novatel_gps_driver::InspvaParser::MessageType & msg);
+
       static constexpr uint16_t DEFAULT_TCP_PORT = 3001;
       static constexpr uint16_t DEFAULT_UDP_PORT = 3002;
       static constexpr size_t MAX_BUFFER_SIZE = 100;
@@ -578,6 +592,7 @@ namespace novatel_gps_driver
       boost::circular_buffer<novatel_gps_driver::GtimuParser::MessageType> gtimu_msgs_;
       boost::circular_buffer<novatel_gps_driver::GpfpdParser::MessageType> gpfpd_msgs_;
       boost::circular_buffer<novatel_gps_driver::GphpdParser::MessageType> gphpd_msgs_;
+      boost::circular_buffer<autoware_sensing_msgs::msg::GnssInsOrientationStamped> gps_orientation_msgs_;
       boost::circular_buffer<sensor_msgs::msg::Imu::SharedPtr> imu_msgs_;
       boost::circular_buffer<novatel_gps_driver::InscovParser::MessageType> inscov_msgs_;
       boost::circular_buffer<novatel_gps_driver::InspvaParser::MessageType> inspva_msgs_;

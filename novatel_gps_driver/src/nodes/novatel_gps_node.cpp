@@ -55,6 +55,7 @@ namespace novatel_gps_driver
       publish_gtimu_(false),
       publish_gpfpd_(false),
       publish_gphpd_(false),
+      publish_gpsOrientation_(false),
       imu_rate_(100.0),
       imu_sample_rate_(-1),
       span_frame_to_ros_frame_(false),
@@ -115,6 +116,7 @@ namespace novatel_gps_driver
     publish_gtimu_ = this->declare_parameter("publish_gtimu", publish_gtimu_);
     publish_gpfpd_ = this->declare_parameter("publish_gpfpd", publish_gpfpd_);
     publish_gphpd_ = this->declare_parameter("publish_gphpd", publish_gphpd_);
+    publish_gpsOrientation_ = this->declare_parameter("publish_gpsOrientation", publish_gpsOrientation_);
     publish_imu_messages_ = this->declare_parameter("publish_imu_messages", publish_imu_messages_);
     publish_invalid_gpsfix_ = this->declare_parameter("publish_invalid_gpsfix", false);
     publish_novatel_positions_ = this->declare_parameter("publish_novatel_positions", publish_novatel_positions_);
@@ -192,7 +194,7 @@ namespace novatel_gps_driver
     }
     else
     {
-      if( publish_gtimu_ && publish_gpfpd_)
+      if( publish_gtimu_)
       {
         imu_pub_ = swri::advertise<sensor_msgs::msg::Imu>(*this, "imu", 100);
       }
@@ -221,6 +223,12 @@ namespace novatel_gps_driver
     if(publish_gphpd_)
     {
       gphpd_pub_ = swri::advertise<novatel_gps_msgs::msg::Gphpd>(*this, "gphpd", 100);
+    }
+
+    if(publish_gpsOrientation_)
+    {
+      gnss_orientation_pub_ = swri::advertise<autoware_sensing_msgs::msg::GnssInsOrientationStamped>(*this, "gnssOrientation", 100);
+      inspva_pub_ = swri::advertise<novatel_gps_msgs::msg::Inspva>(*this, "inspva", 100);
     }
 
     if (publish_novatel_positions_)
@@ -709,7 +717,7 @@ namespace novatel_gps_driver
         gpfpd_pub_->publish(std::move(msg));
       }
     }
-    if( publish_gpfpd_ && publish_gtimu_)
+    if( publish_gtimu_)
     {
       std::vector<sensor_msgs::msg::Imu::SharedPtr> imu_msgs;
       gps_.GetImuMessages(imu_msgs);
@@ -730,6 +738,26 @@ namespace novatel_gps_driver
         msg->header.stamp = this->get_clock()->now();
         msg->header.frame_id = frame_id_;
         gphpd_pub_->publish(std::move(msg));
+      }
+    }
+
+    if(publish_gpsOrientation_)
+    {
+      std::vector<autoware_sensing_msgs::msg::GnssInsOrientationStamped> gps_orientation;
+      gps_.GetGnssOrientationMessages(gps_orientation);
+      for (auto& msg : gps_orientation)
+      {
+        msg.header.stamp = rclcpp::Time(msg.header.stamp, this->get_clock()->get_clock_type()) + sync_offset;
+        msg.header.frame_id = frame_id_;
+        gnss_orientation_pub_->publish(msg);
+      }
+      std::vector<novatel_gps_driver::InspvaParser::MessageType> inspva_msgs;
+      gps_.GetInspvaMessages(inspva_msgs);
+      for (auto& msg : inspva_msgs)
+      {
+        msg->header.stamp = rclcpp::Time(msg->header.stamp, this->get_clock()->get_clock_type()) + sync_offset;
+        msg->header.frame_id = imu_frame_id_;
+        inspva_pub_->publish(*msg);
       }
     }
 

@@ -74,6 +74,7 @@ namespace novatel_gps_driver
       gtimu_msgs_(MAX_BUFFER_SIZE),
       gpfpd_msgs_(MAX_BUFFER_SIZE),
       gphpd_msgs_(MAX_BUFFER_SIZE),
+      gps_orientation_msgs_(MAX_BUFFER_SIZE),
       imu_msgs_(MAX_BUFFER_SIZE),
       inscov_msgs_(MAX_BUFFER_SIZE),
       inspva_msgs_(MAX_BUFFER_SIZE),
@@ -508,6 +509,11 @@ namespace novatel_gps_driver
   void NovatelGps::GetGphpdMessages(std::vector<novatel_gps_driver::GphpdParser::MessageType>& gphpd_messages)
   {
     DrainQueue(gphpd_msgs_, gphpd_messages);
+  }
+
+  void NovatelGps::GetGnssOrientationMessages(std::vector<autoware_sensing_msgs::msg::GnssInsOrientationStamped>& gps_orientation_messages)
+  {
+    DrainQueue(gps_orientation_msgs_, gps_orientation_messages);
   }
 
   void NovatelGps::GetGprmcMessages(std::vector<novatel_gps_driver::GprmcParser::MessageType>& gprmc_messages)
@@ -1032,27 +1038,47 @@ namespace novatel_gps_driver
 
   void NovatelGps::GenerateImuMessagesFromNewton()
   {
+    #define G_VALUE 9.8
+    #define CONV_G_M_S2(x)  ((x)*(G_VALUE))
     size_t previous_size = imu_msgs_.size();
     // Only do anything if we have gtimu messages.
-    if(!gtimu_msgs_.empty() && !gpfpd_msgs_.empty() )
+    if(!gtimu_msgs_.empty() )
     {
       const auto& gtimu = gtimu_msgs_.back();
-      const auto& gpfpd = gpfpd_msgs_.back();
       // Now we can combine them together to make an Imu message.
       auto imu = std::make_shared<sensor_msgs::msg::Imu>();
       imu->header.stamp = gtimu->header.stamp;
+
       tf2::Quaternion q;
-      q.setRPY(gpfpd->roll * DEGREES_TO_RADIANS,
-               -(gpfpd->pitch) * DEGREES_TO_RADIANS,
-               -(gpfpd->heading) * DEGREES_TO_RADIANS);
+      static double roll_gyro = 0.0;
+      static double pitch_gyro = 0.0;
+      static double yaw_gyro = 0.0;
+
+      double roll_acc = -atan2(CONV_G_M_S2(gtimu->ay), CONV_G_M_S2(gtimu->az));
+      double pitch_acc = atan2(-CONV_G_M_S2(gtimu->ax), \
+      sqrt(CONV_G_M_S2(gtimu->ay) * CONV_G_M_S2(gtimu->ay) \
+      + CONV_G_M_S2(gtimu->az) * CONV_G_M_S2(gtimu->az)));
+
+      roll_gyro += gtimu->gx;
+      pitch_gyro += gtimu->gy;
+      yaw_gyro += gtimu->gz;
+
+
+      double roll = roll_acc * 0.02 + roll_gyro * 0.98;
+      double pitch = pitch_acc * 0.02 + pitch_gyro * 0.98;
+      double yaw = yaw_gyro;
+
+      q.setRPY(roll * DEGREES_TO_RADIANS,
+               -(pitch) * DEGREES_TO_RADIANS,
+               -(yaw) * DEGREES_TO_RADIANS);
       imu->orientation = tf2::toMsg(q);
       imu->orientation_covariance[0] =
       imu->orientation_covariance[4] =
       imu->orientation_covariance[8] = 1e-3;
 
-      imu->angular_velocity.x = gtimu->gx;
-      imu->angular_velocity.y = gtimu->gy;
-      imu->angular_velocity.z = gtimu->gz;
+      imu->angular_velocity.x = gtimu->gx*DEGREES_TO_RADIANS;
+      imu->angular_velocity.y = gtimu->gy*DEGREES_TO_RADIANS;
+      imu->angular_velocity.z = gtimu->gz*DEGREES_TO_RADIANS;
       imu->angular_velocity_covariance[0] =
       imu->angular_velocity_covariance[4] =
       imu->angular_velocity_covariance[8] = 1e-3;
@@ -1066,6 +1092,33 @@ namespace novatel_gps_driver
 
       imu_msgs_.push_back(imu);
     }
+  }
+
+  void NovatelGps::GeneratieGnssInsOrientation_Inpsva(const novatel_gps_driver::InspvaParser::MessageType & inspva)
+  {
+    auto orientation_msg = std::make_shared<autoware_sensing_msgs::msg::GnssInsOrientationStamped>();
+    
+    orientation_msg->header.stamp = inspva->header.stamp;
+    tf2::Quaternion q;
+    /*
+    * in clap b7 roll-> y-axis pitch-> x axis azimuth->left-handed rotation around z-axis
+    * in ros imu msg roll-> x-axis pitch-> y axis azimuth->right-handed rotation around z-axis
+    */
+
+    q.setRPY(inspva->roll * DEGREES_TO_RADIANS,
+              (inspva->pitch) * DEGREES_TO_RADIANS,
+              (inspva->azimuth) * DEGREES_TO_RADIANS);
+    orientation_msg->orientation.orientation = tf2::toMsg(q);
+    // orientation_msg->position.x = inspva->north_velocity;
+    // orientation_msg->position.y = inspva->east_velocity;
+    // orientation_msg->position.z = inspva->up_velocity;
+    orientation_msg->orientation.rmse_rotation_x = inspva->roll * inspva->roll;
+    orientation_msg->orientation.rmse_rotation_y = inspva->pitch * inspva->pitch;
+    orientation_msg->orientation.rmse_rotation_z = inspva->azimuth * inspva->azimuth;
+    gps_orientation_msgs_.push_back(*orientation_msg);
+    // 检查缓冲区当前大小
+    // std::cout<< "Buffer size before drain: "<< gps_orientation_msgs_.size()<< std::endl;
+    // RCLCPP_INFO(node_.get_logger(), "running here");
   }
 
   void NovatelGps::GeneratieGnssInsOrientation()
@@ -1195,14 +1248,18 @@ namespace novatel_gps_driver
         auto inspva = inspva_parser_.ParseBinary(msg);
         inspva->header.stamp = stamp;
         inspva_msgs_.push_back(inspva);
-        inspva_queue_.push(inspva);
-        if (inspva_queue_.size() > MAX_BUFFER_SIZE)
+        if(  (!corrimudata_queue_.empty() || !corrimus_queue_.empty()) )
         {
-          // TODO pjr Make this a _THROTTLE log when it's available
-          RCLCPP_WARN(node_.get_logger(), "INSPVA queue overflow.");
-          inspva_queue_.pop();
+          inspva_queue_.push(inspva);
+          if (inspva_queue_.size() > MAX_BUFFER_SIZE)
+          {
+            // TODO pjr Make this a _THROTTLE log when it's available
+            RCLCPP_WARN(node_.get_logger(), "INSPVA queue overflow.");
+            inspva_queue_.pop();
+          }
+          GenerateImuMessages();
         }
-        GenerateImuMessages();
+        GeneratieGnssInsOrientation_Inpsva(inspva);
         break;
       }
       case InspvasParser::MESSAGE_ID:
@@ -1340,7 +1397,6 @@ namespace novatel_gps_driver
     {
       auto gpfpd = gpfpd_parser_.ParseAscii(sentence);
       gpfpd_msgs_.push_back(std::move(gpfpd));
-      GenerateImuMessagesFromNewton();
     }
     else if (sentence.id == GphpdParser::MESSAGE_NAME)
     {
